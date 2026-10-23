@@ -275,9 +275,187 @@ fn postprocess(code: String) -> String {
         code.truncate(index);
     }
 
+    code = patch_untagged_enums(code);
+
     code + "\n"
 }
 
 fn indent(line: &str) -> &str {
     &line[..line.len() - line.trim_start().len()]
+}
+
+struct UntaggedVariant {
+    name: String,
+    value: Option<String>,
+    ty: Option<String>,
+}
+
+fn patch_untagged_enums(code: String) -> String {
+    const UNTAGGED: &str = "#[cfg_attr(feature = \"serde\", serde(untagged))]";
+    const STRING_UNION: &str = "#[cfg_attr(feature = \"serde\", serde(try_from = \"::std::string::String\", into = \"::std::string::String\"))]";
+
+    let mut lines = code.lines().map(str::to_owned).collect::<Vec<_>>();
+    let mut implementations = Vec::new();
+
+    for index in 0..lines.len() {
+        if lines[index].trim() != UNTAGGED {
+            continue;
+        }
+
+        let enum_index = index + 1;
+        let Some((name, variants)) = parse_untagged_enum(&lines, enum_index) else {
+            continue;
+        };
+
+        lines[index] = STRING_UNION.to_string();
+        implementations.push(render_string_union(&name, &variants));
+    }
+
+    if !implementations.is_empty() {
+        lines.push(String::new());
+        lines.extend(implementations);
+    }
+
+    lines.join("\n")
+}
+
+fn parse_untagged_enum(
+    lines: &[String],
+    enum_index: usize,
+) -> Option<(String, Vec<UntaggedVariant>)> {
+    let declaration = lines.get(enum_index)?.trim();
+    let name = declaration
+        .strip_prefix("pub enum ")?
+        .trim_end_matches('{')
+        .trim()
+        .to_string();
+
+    let mut variants = Vec::new();
+    let mut rename = None;
+
+    for line in &lines[enum_index + 1..] {
+        let trimmed = line.trim();
+        if trimmed == "}" {
+            return Some((name, variants));
+        }
+
+        if let Some(value) = trimmed
+            .strip_prefix("#[cfg_attr(feature = \"serde\", serde(rename = \"")
+            .and_then(|line| line.strip_suffix("\"))]"))
+        {
+            rename = Some(value.to_string());
+            continue;
+        }
+
+        if trimmed.is_empty() || trimmed.starts_with('#') {
+            continue;
+        }
+
+        let declaration = trimmed.trim_end_matches(',');
+        let (variant_name, ty) = match declaration.split_once('(') {
+            Some((variant_name, ty)) => (
+                variant_name.trim().to_string(),
+                Some(ty.strip_suffix(')')?.trim().to_string()),
+            ),
+            None => (declaration.to_string(), None),
+        };
+
+        let value = if ty.is_none() {
+            Some(rename.take().unwrap_or_else(|| variant_name.clone()))
+        } else {
+            None
+        };
+        variants.push(UntaggedVariant {
+            name: variant_name,
+            value,
+            ty,
+        });
+    }
+
+    None
+}
+
+fn render_string_union(name: &str, variants: &[UntaggedVariant]) -> String {
+    let mut code = format!(
+        "impl ::core::convert::TryFrom<::std::string::String> for {name} {{\n\
+         \x20   type Error = ::std::string::String;\n\n\
+         \x20   fn try_from(value: ::std::string::String) -> ::core::result::Result<Self, Self::Error> {{\n"
+    );
+
+    for variant in variants {
+        if let Some(value) = &variant.value {
+            code.push_str(&format!(
+                "        if value == \"{value}\" {{\n\
+                 \x20           return ::core::result::Result::Ok(Self::{});\n\
+                 \x20       }}\n",
+                variant.name
+            ));
+        }
+    }
+
+    let mut has_fallback = false;
+    for variant in variants {
+        let Some(ty) = &variant.ty else {
+            continue;
+        };
+        if is_string_type(ty) {
+            code.push_str(&format!(
+                "        ::core::result::Result::Ok(Self::{}(value))\n",
+                variant.name
+            ));
+            has_fallback = true;
+            break;
+        } else {
+            code.push_str(&format!(
+                "        if let ::core::result::Result::Ok(value) = value.as_str().parse::<{ty}>() {{\n\
+                 \x20           return ::core::result::Result::Ok(Self::{}(value));\n\
+                 \x20       }}\n",
+                variant.name
+            ));
+        }
+    }
+
+    if !has_fallback {
+        code.push_str(&format!(
+            "        ::core::result::Result::Err(format!(\"invalid {name} value: {{value}}\"))\n"
+        ));
+    }
+    code.push_str("    }\n}\n\n");
+
+    code.push_str(&format!(
+        "impl ::core::convert::From<{name}> for ::std::string::String {{\n\
+         \x20   fn from(value: {name}) -> Self {{\n\
+         \x20       match value {{\n"
+    ));
+
+    for variant in variants {
+        if let Some(value) = &variant.value {
+            code.push_str(&format!(
+                "            {name}::{} => \"{value}\".into(),\n",
+                variant.name
+            ));
+        } else {
+            let Some(ty) = &variant.ty else {
+                continue;
+            };
+            if is_string_type(ty) {
+                code.push_str(&format!(
+                    "            {name}::{}(value) => value,\n",
+                    variant.name
+                ));
+            } else {
+                code.push_str(&format!(
+                    "            {name}::{}(value) => value.to_string(),\n",
+                    variant.name
+                ));
+            }
+        }
+    }
+
+    code.push_str("        }\n    }\n}\n");
+    code
+}
+
+fn is_string_type(ty: &str) -> bool {
+    ty == "String" || ty.ends_with("::String")
 }
