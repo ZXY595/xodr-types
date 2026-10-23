@@ -100,7 +100,10 @@ pub enum EContactPoint {
 }
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", serde(untagged))]
+#[cfg_attr(
+    feature = "serde",
+    serde(try_from = "::std::string::String", into = "::std::string::String")
+)]
 pub enum ECountryCode {
     #[cfg_attr(feature = "serde", serde(rename = "OpenDRIVE"))]
     OpenDrive,
@@ -945,7 +948,10 @@ pub struct TDataQualityRawData {
 pub type TGrEqZero = ::core::primitive::f64;
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", serde(untagged))]
+#[cfg_attr(
+    feature = "serde",
+    serde(try_from = "::std::string::String", into = "::std::string::String")
+)]
 pub enum TGrEqZeroOrContactPoint {
     #[cfg_attr(feature = "serde", serde(rename = "start"))]
     Start,
@@ -1601,7 +1607,10 @@ pub struct TLicense {
 }
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", serde(untagged))]
+#[cfg_attr(
+    feature = "serde",
+    serde(try_from = "::std::string::String", into = "::std::string::String")
+)]
 pub enum TMaxSpeed {
     #[cfg_attr(feature = "serde", serde(rename = "no limit"))]
     NoLimit,
@@ -4098,3 +4107,111 @@ pub enum TYesNo {
     No,
 }
 pub type TZeroOne = ::core::primitive::f64;
+
+impl ::core::convert::TryFrom<::std::string::String> for ECountryCode {
+    type Error = ::std::string::String;
+
+    fn try_from(value: ::std::string::String) -> ::core::result::Result<Self, Self::Error> {
+        if value == "OpenDRIVE" {
+            return ::core::result::Result::Ok(Self::OpenDrive);
+        }
+        if value == "Austria" {
+            return ::core::result::Result::Ok(Self::Austria);
+        }
+        if value == "Brazil" {
+            return ::core::result::Result::Ok(Self::Brazil);
+        }
+        if value == "China" {
+            return ::core::result::Result::Ok(Self::China);
+        }
+        if value == "France" {
+            return ::core::result::Result::Ok(Self::France);
+        }
+        if value == "Germany" {
+            return ::core::result::Result::Ok(Self::Germany);
+        }
+        if value == "Italy" {
+            return ::core::result::Result::Ok(Self::Italy);
+        }
+        if value == "Switzerland" {
+            return ::core::result::Result::Ok(Self::Switzerland);
+        }
+        if value == "USA" {
+            return ::core::result::Result::Ok(Self::Usa);
+        }
+        ::core::result::Result::Ok(Self::String(value))
+    }
+}
+
+impl ::core::convert::From<ECountryCode> for ::std::string::String {
+    fn from(value: ECountryCode) -> Self {
+        match value {
+            ECountryCode::OpenDrive => "OpenDRIVE".into(),
+            ECountryCode::Austria => "Austria".into(),
+            ECountryCode::Brazil => "Brazil".into(),
+            ECountryCode::China => "China".into(),
+            ECountryCode::France => "France".into(),
+            ECountryCode::Germany => "Germany".into(),
+            ECountryCode::Italy => "Italy".into(),
+            ECountryCode::Switzerland => "Switzerland".into(),
+            ECountryCode::Usa => "USA".into(),
+            ECountryCode::String(value) => value,
+        }
+    }
+}
+
+impl ::core::convert::TryFrom<::std::string::String> for TGrEqZeroOrContactPoint {
+    type Error = ::std::string::String;
+
+    fn try_from(value: ::std::string::String) -> ::core::result::Result<Self, Self::Error> {
+        if value == "start" {
+            return ::core::result::Result::Ok(Self::Start);
+        }
+        if value == "end" {
+            return ::core::result::Result::Ok(Self::End);
+        }
+        if let ::core::result::Result::Ok(value) = value.as_str().parse::<::core::primitive::f64>()
+        {
+            return ::core::result::Result::Ok(Self::F64(value));
+        }
+        ::core::result::Result::Err(format!("invalid TGrEqZeroOrContactPoint value: {value}"))
+    }
+}
+
+impl ::core::convert::From<TGrEqZeroOrContactPoint> for ::std::string::String {
+    fn from(value: TGrEqZeroOrContactPoint) -> Self {
+        match value {
+            TGrEqZeroOrContactPoint::Start => "start".into(),
+            TGrEqZeroOrContactPoint::End => "end".into(),
+            TGrEqZeroOrContactPoint::F64(value) => value.to_string(),
+        }
+    }
+}
+
+impl ::core::convert::TryFrom<::std::string::String> for TMaxSpeed {
+    type Error = ::std::string::String;
+
+    fn try_from(value: ::std::string::String) -> ::core::result::Result<Self, Self::Error> {
+        if value == "no limit" {
+            return ::core::result::Result::Ok(Self::NoLimit);
+        }
+        if value == "undefined" {
+            return ::core::result::Result::Ok(Self::Undefined);
+        }
+        if let ::core::result::Result::Ok(value) = value.as_str().parse::<::core::primitive::f64>()
+        {
+            return ::core::result::Result::Ok(Self::F64(value));
+        }
+        ::core::result::Result::Err(format!("invalid TMaxSpeed value: {value}"))
+    }
+}
+
+impl ::core::convert::From<TMaxSpeed> for ::std::string::String {
+    fn from(value: TMaxSpeed) -> Self {
+        match value {
+            TMaxSpeed::NoLimit => "no limit".into(),
+            TMaxSpeed::Undefined => "undefined".into(),
+            TMaxSpeed::F64(value) => value.to_string(),
+        }
+    }
+}

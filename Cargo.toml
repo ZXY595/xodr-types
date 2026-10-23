@@ -1,6 +1,6 @@
 [package]
 name = "xodr-types"
-version = "0.1.0+OpenDRIVEv1.9.0"
+version = "0.2.0+OpenDRIVEv1.9.0"
 description = "Rust types for ASAM OpenDRIVE 1.9 XML nodes"
 edition = "2024"
 resolver = "3"
