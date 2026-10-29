@@ -4,7 +4,7 @@ Type only crate for [ASAM OpenDRIVE](https://publications.pages.asam.net/standar
 
 ## Features
 
-- `serde`: Enable [`serde`](https://serde.rs/) support, useful for [quick-xml](https://github.com/tafia/quick-xml) with `serde` feature.
+- `serde`: Enable [`serde`](https://serde.rs/) support, useful for [quick-xml](https://github.com/tafia/quick-xml) with `serialize` feature.
 
 ## Alternative
 
