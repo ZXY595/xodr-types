@@ -1,3 +1,14 @@
+// ASAM OpenDRIVE V1.9.0
+//
+// © by ASAM e.V., 2026
+//
+// ASAM OpenDRIVE defines a file format for the precise analytical description of road networks
+//
+//
+// Any use is Limited to the scope described in the ASAM license terms.
+// This file is distributable in accordance with the ASAM license terms.
+// See www.asam.net/license.html for further details.
+
 pub type OpenDrive = OpenDriveElementType;
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, Debug, PartialEq)]
